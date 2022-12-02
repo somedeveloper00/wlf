@@ -10,5 +10,5 @@ public class Cell : MonoBehaviour
 
 public enum CellType
 {
-	Text, Wall, Baba, Flag
+	Text, Wall, Baba, Flag, PapaNoel
 }
