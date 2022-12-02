@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1768939245639853004}
   - component: {fileID: 1768939245639853007}
-  - component: {fileID: -8525024115954690082}
+  - component: {fileID: 5384477770621906653}
   m_Layer: 0
   m_Name: baba
   m_TagString: Untagged
@@ -85,7 +85,7 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &-8525024115954690082
+--- !u!114 &5384477770621906653
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -94,10 +94,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1768939245639853006}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3bdbb33c7fb0433787452c83f10f450a, type: 3}
+  m_Script: {fileID: 11500000, guid: b4b7474079434818b08b6b05397e9098, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  type: 2
   IsYou: 0
-  CanPass: 0
+  IsWin: 0
   CanPush: 0
-  Position: {x: 0, y: 0}

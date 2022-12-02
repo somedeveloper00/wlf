@@ -2,9 +2,13 @@
 
 public class Cell : MonoBehaviour
 {
+	public CellType type;
 	public bool IsYou;
 	public bool IsWin;
-	public bool CanPass;
 	public bool CanPush;
-	public Vector2Int Position;
+}
+
+public enum CellType
+{
+	Text, Wall, Baba, Flag
 }
