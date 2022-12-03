@@ -40,17 +40,26 @@ public class GameManager : MonoBehaviour
 	void OnEnable() => input.player.Enable();
 	void OnDisable() => input.player.Disable();
 
-#region cell change commands
-
 	public void ExecuteCommand(string command) {
 		var s = command.Split( ' ' );
-		if ( s.Length != 3 ) return;
+		if ( s.Length < 3 || s.Length % 2 == 0 ) return;
+		// check if it's a multi-statement command
+		if ( s.Length > 3 ) {
+			// turn them to multiple simple command string
+			var last_is = s[s.Length-2];
+			var assignment = s[s.Length-1];
+			for (int i = 0; i < (s.Length - 1) / 2; i++) {
+				ExecuteCommand( $"{s[i * 2]} {last_is} {assignment}" );
+			}
+			return;
+		}
 		if ( Enum.TryParse( typeof(CellType), s[0], true, out var t) ) {
 			var type = (CellType)t;
 			bool _is;
 			if ( s[1] == "is" ) _is = true;
 			else if ( s[1] == "not" ) _is = false;
 			else return;
+			
 			
 			switch (s[2].ToLower()) {
 				case "you":
@@ -68,8 +77,6 @@ public class GameManager : MonoBehaviour
 			}
 		}
 	}
-
-#endregion
 
 	void onMoveUpInput(InputAction.CallbackContext _) => moveYous( Vector2.up );
 	void onMoveDownInput(InputAction.CallbackContext _) => moveYous( Vector2.down );
@@ -98,7 +105,7 @@ public class GameManager : MonoBehaviour
 				return;
 			}
 
-			if ( destCell.CanPush ) {
+			if ( destCell.CanPush || destCell.IsYou ) {
 				var pushingCells = new List<Cell>();
 				pushingCells.Add( destCell );
 				
@@ -155,27 +162,30 @@ public class GameManager : MonoBehaviour
 		Debug.Log( "previous commands flushed." );
 		cells.Where( c => c.type != CellType.Text ).ToList()
 			.ForEach( c => c.CanPush = c.IsWin = c.IsYou = false );
-		
+		// finding new results 
 		foreach (var cell in cells) {
-			// finding 2nd match
-			foreach (var ncell in cells) {
-				if( cell == ncell ) continue;
-				// if dist is 1
-				if ( Math.Abs( Vector2.Distance( cell.transform.position, ncell.transform.position ) - 1 ) < 0.1f ) {
-					// finding 3rd match with the same distance pattern
-					var pos = ncell.transform.position * 2 - cell.transform.position;
-					var nncell = cells.ToList().Find( c => Vector2.Distance( c.transform.position, pos ) < 0.1f );
-					if (nncell == null) continue;
-					// making text
-					var t1 = cell.GetComponentInChildren<TMP_Text>();
-					var t2 = ncell.GetComponentInChildren<TMP_Text>();
-					var t3 = nncell.GetComponentInChildren<TMP_Text>();
-					if ( t1 == null || t2 == null || t3 == null ) continue;
-					Debug.Log( $"text match : {t1.text} + {t2.text} + {t3.text}" );
-					ExecuteCommand( $"{t1.text} {t2.text} {t3.text}" );
-				}
-			}
+			if (cell.type != CellType.Text) continue;
+			var neighbors = cells.ToList().Where( c => c.type == CellType.Text && c != cell && Neighbor( c, cell ) ).ToList();
+			neighbors.ForEach( c => process_neighbors_at( cell, c.transform.position - cell.transform.position ) );
 		}
+
+		void process_neighbors_at(Cell cell, Vector2 dir) {
+
+			string r = cell.Text;
+			int count = 1;
+			
+			while (true) {
+				var next = cells.ToList().Find( c => c.type == CellType.Text && c != cell && Vector2.Distance(c.transform.position - cell.transform.position, dir) < 0.1f );
+				if ( next == null ) break;
+				r += " " + next.Text;
+				count++;
+				cell = next;
+				if ( count > 2 && count % 2 == 1 ) 
+					ExecuteCommand( r );
+			}
+
+		}
+		bool Neighbor(Cell c1, Cell c2) => Mathf.Abs( Vector2.Distance( c1.transform.position, c2.transform.position ) - cellDistance ) < 0.1f;
 	}
 	private void onWin() {
 		SceneManager.LoadScene( nextSceneName );
