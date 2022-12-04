@@ -7,6 +7,8 @@ public class Cell : MonoBehaviour
 	public CellType type;
 	public bool IsYou;
 	public bool IsWin;
+	public bool IsDie;
+	public bool IsBlock;
 	public bool CanPush;
 
 	 TMP_Text text;
@@ -17,5 +19,5 @@ public class Cell : MonoBehaviour
 
 public enum CellType
 {
-	Text, Wall, Baba, Flag, PapaNoel
+	Text, Wall, Nika, Mahsa, Toomaj, Flag, Fire, Microphone, Border, Bravery
 }

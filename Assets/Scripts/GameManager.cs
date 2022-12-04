@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using AnimFlex.Tweening;
-using TMPro;
-using TMPro.EditorUtilities;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -74,6 +71,10 @@ public class GameManager : MonoBehaviour
 					Debug.Log( $"{type} {_is} canpush" );
 					cells.SetCanPush( type, _is );
 					break;
+				case "block":
+					Debug.Log( $"{type} {_is} block" );
+					cells.SetIsBlock( type, _is );
+					break;
 			}
 		}
 	}
@@ -97,13 +98,8 @@ public class GameManager : MonoBehaviour
 		var destCell = cells.ToList().Find( c => Vector2.Distance( dest, c.transform.position ) < 0.1f );
 		
 		if ( destCell != null ) {
-			if ( destCell.type == CellType.Wall ) {
+			if ( destCell.IsBlock || destCell.type == CellType.Border )
 				return;
-			}
-			if( destCell.IsWin ) {
-				onWin();
-				return;
-			}
 
 			if ( destCell.CanPush || destCell.IsYou ) {
 				var pushingCells = new List<Cell>();
@@ -121,12 +117,11 @@ public class GameManager : MonoBehaviour
 					}
 
 					if ( !next.CanPush ) {
-						Debug.Log( $"cant push {next.type}" );
+						// Debug.Log( $"cant push {next.type}" );
 						can = false;
 						break;
 					}
-					if ( next.type == CellType.Wall ) {
-						Debug.Log( $"cant push wall" );
+					if ( next.IsBlock || destCell.type == CellType.Border ) {
 						can = false;
 						break;
 					}
@@ -140,7 +135,7 @@ public class GameManager : MonoBehaviour
 						_inMovings++;
 						var dest = (Vector2)c.transform.position + dir;
 						c.transform.AnimPositionTo( dest * cellDistance, ease, duration, delay )
-							.onComplete += () => _inMovings--;
+							.onComplete += () => onMoveEnd( c );
 					} );
 				}
 				else {
@@ -151,17 +146,25 @@ public class GameManager : MonoBehaviour
 		
 		_inMovings++;
 		var anim = movable.transform.AnimPositionTo( dest * cellDistance, ease, duration, delay );
-		anim.onComplete += () => {
+		anim.onComplete += () => onMoveEnd( movable, destCell );
+
+		void onMoveEnd(Cell cell, Cell destCell = null) {
 			_inMovings--;
 			updateCommandsFromTexts();
-		};
+			if (destCell == null) return;
+			if ( cell.IsYou && destCell.IsWin || cell.IsWin && destCell.IsYou ) {
+				onWin();
+			} else if ( cell.IsYou && destCell.IsDie || cell.IsDie && destCell.IsYou ) {
+				onDie();
+			}
+		}
 	}
 
 	void updateCommandsFromTexts() {
 		// flushing previous results
 		Debug.Log( "previous commands flushed." );
 		cells.Where( c => c.type != CellType.Text ).ToList()
-			.ForEach( c => c.CanPush = c.IsWin = c.IsYou = false );
+			.ForEach( c => c.CanPush = c.IsBlock = c.IsWin = c.IsYou = false );
 		// finding new results 
 		foreach (var cell in cells) {
 			if (cell.type != CellType.Text) continue;
@@ -189,5 +192,13 @@ public class GameManager : MonoBehaviour
 	}
 	private void onWin() {
 		SceneManager.LoadScene( nextSceneName );
+	}
+
+	public void RestartLevel() {
+		SceneManager.LoadScene( SceneManager.GetActiveScene().name );
+		
+	}
+	private void onDie() {
+		RestartLevel();
 	}
 }

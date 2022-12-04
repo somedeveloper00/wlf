@@ -7,10 +7,13 @@ public static class CellExtensions
 	}
 
 	public static void SetWin(this Cell[] cells, CellType type, bool value) {
-		cells.Where( c => c.type == type ).ToList().ForEach( c => c.IsWin = true );
+		cells.Where( c => c.type == type ).ToList().ForEach( c => c.IsWin = value );
 	}
 
 	public static void SetCanPush(this Cell[] cells, CellType type, bool value) {
-		cells.Where( c => c.type == type ).ToList().ForEach( c => c.CanPush = true );
+		cells.Where( c => c.type == type ).ToList().ForEach( c => c.CanPush = value );
+	}
+	public static void SetIsBlock(this Cell[] cells, CellType type, bool value) {
+		cells.Where( c => c.type == type ).ToList().ForEach( c => c.IsBlock = true );
 	}
 }
