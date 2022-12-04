@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using AnimFlex.Sequencer;
+using AnimFlex.Sequencer.UserEnd;
 using AnimFlex.Tweening;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -12,7 +14,24 @@ public class GameManager : MonoBehaviour
 	
 	public Cell[] cells = Array.Empty<Cell>();
 
-	[SerializeField] string nextSceneName;
+	public WinCondition winCondition;
+	public SequenceAnim onLoseAnim;
+	public SequenceAnim onWinAnim;
+	
+	[Serializable]
+	public class WinCondition
+	{
+		public string commandMet = "blah is you";
+		public CellType[] fromTypes;
+		public CellType[] toTypes;
+	}
+
+	private void OnValidate() {
+		winCondition ??= new();
+		winCondition.commandMet = winCondition.commandMet.ToLower();
+	}
+
+	[SerializeField] public string nextSceneName;
 	[SerializeField] float cellDistance = 10;
 	[SerializeField] float duration = 1;
 	[SerializeField] float delay = 0.2f;
@@ -75,6 +94,10 @@ public class GameManager : MonoBehaviour
 					Debug.Log( $"{type} {_is} block" );
 					cells.SetIsBlock( type, _is );
 					break;
+				case "death":
+					Debug.Log( $"{type} {_is} death" );
+					cells.SetIsDeath( type, _is );
+					break;
 			}
 		}
 	}
@@ -91,114 +114,145 @@ public class GameManager : MonoBehaviour
 	}
 
 	private void moveCell(Vector2 dir, Cell movable) {
-
+		
 		var dest = (Vector2)movable.transform.position + dir;
+		var destCells = cells.ToList().Where( c => Vector2.Distance( dest, c.transform.position ) < 0.1f ).ToList();
+
+		var nextYou = destCells.Find( c => c.IsYou );
+		if ( nextYou ) if ( !canPush( nextYou, dir ) ) return;
+
+		if ( !canPush( movable, dir ) ) return;
 		
-		// check if destination is valid
-		var destCell = cells.ToList().Find( c => Vector2.Distance( dest, c.transform.position ) < 0.1f );
+		move( movable );
 		
-		if ( destCell != null ) {
-			if ( destCell.IsBlock || destCell.type == CellType.Border )
-				return;
-
-			if ( destCell.CanPush || destCell.IsYou ) {
-				var pushingCells = new List<Cell>();
-				pushingCells.Add( destCell );
-				
-				// check if can be pushed further
-				bool can;
-				Cell n = destCell;
-				while (true) {
-					var pos = (Vector2)n.transform.position + dir;
-					var next = cells.ToList().Find( c => Vector2.Distance( c.transform.position, pos ) < 0.1f );
-					if ( next == null ) {
-						can = true;
-						break;
-					}
-
-					if ( !next.CanPush ) {
-						// Debug.Log( $"cant push {next.type}" );
-						can = false;
-						break;
-					}
-					if ( next.IsBlock || destCell.type == CellType.Border ) {
-						can = false;
-						break;
-					}
-					pushingCells.Add( next );
-					n = next;
-				}
-
-				if ( can ) {
-					Debug.Log( $"pushing {string.Join( ", ", pushingCells.Select( c => c.type ) )}" );
-					pushingCells.ForEach( c => {
-						_inMovings++;
-						var dest = (Vector2)c.transform.position + dir;
-						c.transform.AnimPositionTo( dest * cellDistance, ease, duration, delay )
-							.onComplete += () => onMoveEnd( c );
-					} );
-				}
-				else {
-					return;
-				}
-			}
+		// push all pushable cells
+		Cell next = movable;
+		while (true) {
+			var pos = dir * cellDistance + (Vector2)next.transform.position;
+			var pushables = cells.Where( c => c.CanPush && Vector2.Distance( c.transform.position, pos ) < 0.1f ).ToList();
+			if ( pushables.Count == 0 ) return;
+			if ( !canPush( pushables[0], dir ) ) return;
+			pushables.ForEach( move );
+			next = pushables[0];
 		}
-		
-		_inMovings++;
-		var anim = movable.transform.AnimPositionTo( dest * cellDistance, ease, duration, delay );
-		anim.onComplete += () => onMoveEnd( movable, destCell );
 
-		void onMoveEnd(Cell cell, Cell destCell = null) {
-			_inMovings--;
-			updateCommandsFromTexts();
-			if (destCell == null) return;
-			if ( cell.IsYou && destCell.IsWin || cell.IsWin && destCell.IsYou ) {
-				onWin();
-			} else if ( cell.IsYou && destCell.IsDie || cell.IsDie && destCell.IsYou ) {
-				onDie();
-			}
+		void move(Cell cell) {
+			_inMovings++;
+			var anim = cell.transform.AnimPositionTo( (Vector2)cell.transform.position + dir * cellDistance, ease, duration, delay );
+			anim.onComplete += () => {
+				_inMovings--;
+				updateCommandsFromTexts();
+				checkWinLose();
+			};
 		}
 	}
 
+	bool canPush(Cell cell, Vector2 dir) {
+		Vector2 pos = (Vector2)cell.transform.position + dir;
+		while (true) {
+			var nexts = cells.Where( c => Vector2.Distance( c.transform.position, pos) < 0.1f ).ToArray();
+			if ( nexts.Length == 0 ) return true;
+			if ( nexts.Any( c => c.IsBlock ) ) return false;
+			if ( nexts.Any( c => c.CanPush || c.IsYou ) ) {
+				pos = (Vector2)nexts[0].transform.position + dir;
+				continue;
+			}
+			return true;
+		}
+	}
+
+	
+	
 	void updateCommandsFromTexts() {
 		// flushing previous results
 		Debug.Log( "previous commands flushed." );
-		cells.Where( c => c.type != CellType.Text ).ToList()
-			.ForEach( c => c.CanPush = c.IsBlock = c.IsWin = c.IsYou = false );
-		// finding new results 
+		cells.Where( c => c.type != CellType.Text && c.type != CellType.Border ).ToList()
+			.ForEach( c => c.IsDeath = c.CanPush = c.IsBlock = c.IsWin = c.IsYou = false );
+		var commands = getCommandsFromTexts().ToList();
+		commands.ForEach( ExecuteCommand );
+	}
+	
+	/// <summary>gets all the possible matching commands from text cells </summary>
+	IEnumerable<string> getCommandsFromTexts() {
 		foreach (var cell in cells) {
 			if (cell.type != CellType.Text) continue;
 			var neighbors = cells.ToList().Where( c => c.type == CellType.Text && c != cell && Neighbor( c, cell ) ).ToList();
-			neighbors.ForEach( c => process_neighbors_at( cell, c.transform.position - cell.transform.position ) );
-		}
-
-		void process_neighbors_at(Cell cell, Vector2 dir) {
-
-			string r = cell.Text;
-			int count = 1;
 			
-			while (true) {
-				var next = cells.ToList().Find( c => c.type == CellType.Text && c != cell && Vector2.Distance(c.transform.position - cell.transform.position, dir) < 0.1f );
-				if ( next == null ) break;
-				r += " " + next.Text;
-				count++;
-				cell = next;
-				if ( count > 2 && count % 2 == 1 ) 
-					ExecuteCommand( r );
+			foreach (var c in neighbors) {
+				Cell cell1 = cell;
+				Vector2 dir = c.transform.position - cell.transform.position;
+				string r = cell1.Text;
+				int count = 1;
+			
+				while (true) {
+					var next = cells.ToList().Find( c1 => c1.type == CellType.Text && c1 != cell1 && Vector2.Distance(c1.transform.position - cell1.transform.position, dir) < 0.1f );
+					if ( next == null ) break;
+					r += " " + next.Text;
+					count++;
+					cell1 = next;
+					if ( count > 2 && count % 2 == 1 ) 
+						yield return r.ToLower();
+				}
 			}
-
 		}
+
 		bool Neighbor(Cell c1, Cell c2) => Mathf.Abs( Vector2.Distance( c1.transform.position, c2.transform.position ) - cellDistance ) < 0.1f;
 	}
-	private void onWin() {
-		SceneManager.LoadScene( nextSceneName );
+	
+	private void checkWinLose() {
+		if ( is_lost() ) {
+			onLose();
+		} else if ( is_won() ) {
+			onWin();
+		}
 	}
+
+	bool is_lost() {
+		for (int i = 0; i < cells.Length - 1; i++) {
+			for (int j = i; j < cells.Length; j++) {
+				if ( !((cells[i].IsYou && cells[j].IsDeath) || (cells[i].IsDeath && cells[j].IsYou)) ) continue;
+				if ( Vector2.Distance( cells[i].transform.position, cells[j].transform.position ) > 0.1f ) continue;
+				return true;
+			}
+		}
+
+		return false;
+	}
+	
+	bool is_won() {
+		var commands = getCommandsFromTexts().ToList();
+		// if command condition is met
+		if ( commands.Any( c => c == winCondition.commandMet ) ) {
+			// if any of the two cells are colliding
+			var tfrom = cells.Where( c => winCondition.fromTypes.Contains( c.type ) );
+			var tto = cells.Where( c => winCondition.toTypes.Contains( c.type ) );
+			// check if any of them are in same pos
+			if ( tfrom.Any( c1 =>
+				    tto.Any( c2 => Vector2.Distance( c1.transform.position, c2.transform.position ) < 0.1f ) ) ) {
+				// it'll be enough 
+				return true;
+			}
+		}
+		return false;
+	}
+
+	
+	private void onWin() {
+		Debug.Log( "won" );
+		onWinAnim.PlaySequence();
+		enabled = false;
+	}
+
+	public void GoNextLevel() => SceneManager.LoadScene( nextSceneName );
 
 	public void RestartLevel() {
 		SceneManager.LoadScene( SceneManager.GetActiveScene().name );
 		
 	}
-	private void onDie() {
-		RestartLevel();
+	private void onLose() {
+		// onLoseAnim.onComplete += RestartLevel;
+		onLoseAnim.PlaySequence();
+		Debug.Log( "lost" );
+		enabled = false;
 	}
 }

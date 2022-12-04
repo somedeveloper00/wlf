@@ -16,4 +16,7 @@ public static class CellExtensions
 	public static void SetIsBlock(this Cell[] cells, CellType type, bool value) {
 		cells.Where( c => c.type == type ).ToList().ForEach( c => c.IsBlock = true );
 	}
+	public static void SetIsDeath(this Cell[] cells, CellType type, bool value) {
+		cells.Where( c => c.type == type ).ToList().ForEach( c => c.IsDeath = true );
+	}
 }

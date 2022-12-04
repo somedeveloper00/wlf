@@ -100,6 +100,6 @@ MonoBehaviour:
   type: 8
   IsYou: 0
   IsWin: 0
-  IsDie: 0
-  IsBlock: 0
+  IsDeath: 0
+  IsBlock: 1
   CanPush: 0

@@ -7,7 +7,7 @@ public class Cell : MonoBehaviour
 	public CellType type;
 	public bool IsYou;
 	public bool IsWin;
-	public bool IsDie;
+	public bool IsDeath;
 	public bool IsBlock;
 	public bool CanPush;
 
