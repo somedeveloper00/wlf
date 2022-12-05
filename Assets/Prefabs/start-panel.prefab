@@ -901,7 +901,7 @@ MonoBehaviour:
           selections:
           - transform: {fileID: 5864202695664270069}
             type: 1
-          target: {x: -1500, y: 0, z: 0}
+          target: {x: -2000, y: 0, z: 0}
           multiDelay: 0.1
     - rid: 7971919004405596239
       type: {class: CMultiTweenerColorGraphic, ns: AnimFlex.Sequencer.Clips, asm: AnimFlex}
@@ -940,7 +940,7 @@ MonoBehaviour:
           selections:
           - transform: {fileID: 5864202695664270069}
             type: 1
-          target: {r: 0, g: 0, b: 0, a: 1}
+          target: {r: 0, g: 0, b: 0, a: 0}
           multiDelay: 0.1
     - rid: 7971919004405596248
       type: {class: CTweenerTMP_Text, ns: AnimFlex, asm: Assembly-CSharp}

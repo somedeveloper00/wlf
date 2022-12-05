@@ -18,6 +18,7 @@ public class GameManager : MonoBehaviour
 	public SequenceAnim onLoseAnim;
 	public SequenceAnim onWinAnim;
 	
+	
 	[Serializable]
 	public class WinCondition
 	{
@@ -43,10 +44,10 @@ public class GameManager : MonoBehaviour
 	void Awake() {
 		cells = FindObjectsOfType<Cell>();
 		input = new();
-		input.player.up.performed += onMoveUpInput;
-		input.player.down.performed += onMoveDownInput;
-		input.player.right.performed += onMoveRightInput;
-		input.player.left.performed += onMoveLeftInput;
+		input.player.up.performed += (_) => onMoveUpInput();
+		input.player.down.performed += (_) => onMoveDownInput();
+		input.player.right.performed += (_) => onMoveRightInput();
+		input.player.left.performed += (_) => onMoveLeftInput();
 	}
 
 	private void Start() {
@@ -102,12 +103,12 @@ public class GameManager : MonoBehaviour
 		}
 	}
 
-	void onMoveUpInput(InputAction.CallbackContext _) => moveYous( Vector2.up );
-	void onMoveDownInput(InputAction.CallbackContext _) => moveYous( Vector2.down );
-	void onMoveRightInput(InputAction.CallbackContext _) => moveYous( Vector2.right );
-	void onMoveLeftInput(InputAction.CallbackContext _) => moveYous( Vector2.left );
+	public void onMoveUpInput() => moveYous( Vector2.up );
+	public void onMoveDownInput() => moveYous( Vector2.down );
+	public void onMoveRightInput() => moveYous( Vector2.right );
+	public void onMoveLeftInput() => moveYous( Vector2.left );
 
-	void moveYous(Vector2 dir) {
+	public void moveYous(Vector2 dir) {
 		if(_inMovings > 0) return;
 		foreach (var movable in cells.Where( c => c.IsYou )) 
 			moveCell( dir * cellDistance, movable );
