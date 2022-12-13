@@ -19,5 +19,5 @@ public class Cell : MonoBehaviour
 
 public enum CellType
 {
-	Text, Wall, Nika, Mahsa, Toomaj, Flag, Fire, Microphone, Border, Bravery
+	Text, Wall, Nika, Mahsa, Toomaj, Flag, Fire, Microphone, Border, Bravery, Linux
 }

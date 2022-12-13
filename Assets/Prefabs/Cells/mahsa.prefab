@@ -100,5 +100,6 @@ MonoBehaviour:
   type: 3
   IsYou: 0
   IsWin: 0
-  IsDie: 0
+  IsDeath: 0
+  IsBlock: 0
   CanPush: 0
